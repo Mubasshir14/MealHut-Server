@@ -15,6 +15,10 @@ const UserSchema: Schema = new Schema(
     },
     phone: { type: String },
     address: { type: String },
+    mealProvider: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

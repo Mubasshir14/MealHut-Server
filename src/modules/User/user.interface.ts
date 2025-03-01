@@ -9,6 +9,7 @@ export interface TUser extends Document {
   email: string;
   password: string;
   role: 'customer' | 'mealProvider' | 'admin';
+  mealProvider: boolean;
   phone?: string;
   address?: string;
 }
