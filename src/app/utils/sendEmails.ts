@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
+import config from '../config';
 
 dotenv.config(); 
 
@@ -14,8 +15,8 @@ export const sendEmail = async (
     port: 587,
     secure: false, 
     auth: {
-      user: 'smmubasshiralkasshaf15@gmail.com',
-      pass: 'ceuv qvlu wweh cdmf',
+      user: config.from_email,
+      pass: config.from_pass,
     },
   });
 
