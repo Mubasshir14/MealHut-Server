@@ -10,7 +10,7 @@ const MealSchema = new Schema<TMeal>(
       trim: true,
     },
     imageUrls: {
-      type: String,
+      type: [String],
       required: [true, 'Meal images are required'],
     },
     price: {
@@ -24,8 +24,9 @@ const MealSchema = new Schema<TMeal>(
       min: 0,
     },
     category: {
-      type: Schema.Types.ObjectId,
-      ref: 'MealCategory',
+      // type: Schema.Types.ObjectId,
+      type: String,
+      // ref: 'MealCategory',
       required: [true, 'Category is required'],
     },
     mealProvider: {
@@ -33,33 +34,29 @@ const MealSchema = new Schema<TMeal>(
       ref: 'MealProvider',
       required: [true, 'Meal provider is required'],
     },
-    averageRating: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 5,
+    user: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Meal provider is required'],
     },
-    ratingCount: {
-      type: Number,
-      default: 0,
-      min: 0,
+    isActive: {
+      type: Boolean,
+      default: true,
     },
-    description: {
-      ingredients: {
-        type: String,
-        required: [true, 'Ingredients are required'],
-        trim: true,
-      },
-      portion_size: {
-        type: String,
-        required: [true, 'Portion size is required'],
-        trim: true,
-      },
-      why_eat: {
-        type: String,
-        required: [true, 'Reason to eat is required'],
-        trim: true,
-      },
+    ingredients: {
+      type: String,
+      required: [true, 'Ingredients are required'],
+      trim: true,
+    },
+    portion_size: {
+      type: String,
+      required: [true, 'Portion size is required'],
+      trim: true,
+    },
+    why_eat: {
+      type: String,
+      required: [true, 'Reason to eat is required'],
+      trim: true,
     },
   },
   {

@@ -1,14 +1,14 @@
 import { RequestHandler } from 'express';
 import catchAsync from '../../app/utils/catchAsync';
-import { TUser } from '../User/user.interface';
 import sendResponse from '../../app/utils/sendResponse';
 import { MealCategoryService } from './mealCategory.service';
+import { IJwtPayload } from '../Auth/auth.interface';
 
 const createMealCategory: RequestHandler = catchAsync(async (req, res) => {
   const result = await MealCategoryService.createCategory(
     req.body,
     req.file,
-    req.user as TUser,
+    req.user as IJwtPayload,
   );
 
   sendResponse(res, {

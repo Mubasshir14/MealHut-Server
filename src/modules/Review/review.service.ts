@@ -5,12 +5,21 @@ const createReviewIntoDB = async (payload: TReview) => {
   const result = await Review.create(payload);
   return result;
 };
+
 const getReviewIntoDB = async () => {
   const result = await Review.find();
   return result;
 };
 
-const getProductReviewIntoDB = async (id: string) => {
+
+const getProductReviewIntoDB = async (mealId?: string) => {
+  const filter = mealId ? { mealId } : {}; 
+  const result = await Review.find(filter);
+  return result;
+};
+
+
+const getSingleProductReviewFromDB = async (id: string) => {
   try {
     const reviews = await Review.find({ meal: id });
     if (reviews.length === 0) {
@@ -25,5 +34,6 @@ const getProductReviewIntoDB = async (id: string) => {
 export const ReviewService = {
   createReviewIntoDB,
   getReviewIntoDB,
-  getProductReviewIntoDB,
+  getSingleProductReviewFromDB,
+  getProductReviewIntoDB
 };

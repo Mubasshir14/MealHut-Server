@@ -1,23 +1,80 @@
-import { model, Schema } from 'mongoose';
+/* eslint-disable @typescript-eslint/no-this-alias */
+import mongoose, { Schema } from 'mongoose';
+import { IUser, UserModel, UserRole } from './user.interface';
 import bcrypt from 'bcrypt';
-import { TUser, UserModel } from './user.interface';
+import { StatusCodes } from 'http-status-codes';
 import config from '../../app/config';
+import AppError from '../../app/errors/AppError';
 
-const UserSchema: Schema = new Schema(
+// Create the User schema based on the interface
+const userSchema = new Schema<IUser, UserModel>(
   {
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true, select: 0 },
+    name: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
     role: {
       type: String,
-      enum: ['customer', 'mealProvider', 'admin'],
-      default: 'customer',
+      enum: [UserRole.ADMIN, UserRole.CUSTOMER, UserRole.MEALPROVIDER],
+      default: UserRole.CUSTOMER,
     },
-    phone: { type: String },
-    address: { type: String },
-    mealProvider: {
+    provider: {
       type: Boolean,
       default: false,
+    },
+    address: {
+      type: String,
+      required: true,
+    },
+    phone: {
+      type: String,
+      required: true,
+    },
+    clientInfo: {
+      device: {
+        type: String,
+        enum: ['pc', 'mobile'],
+        required: true,
+      },
+      browser: {
+        type: String,
+        required: true,
+      },
+      ipAddress: {
+        type: String,
+        required: true,
+      },
+      pcName: {
+        type: String,
+      },
+      os: {
+        type: String,
+      },
+      userAgent: {
+        type: String,
+      },
+    },
+    lastLogin: {
+      type: Date,
+      default: Date.now,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    otpToken: {
+      type: String,
+      default: null,
     },
   },
   {
@@ -25,29 +82,53 @@ const UserSchema: Schema = new Schema(
   },
 );
 
-UserSchema.pre('save', async function (next) {
-  this.password = await bcrypt.hash(
-    this.password as string,
+userSchema.pre('save', async function (next) {
+  const user = this;
+
+  user.password = await bcrypt.hash(
+    user.password,
     Number(config.bcrypt_salt_rounds),
   );
 
   next();
 });
 
-UserSchema.post('save', function (doc, next) {
+userSchema.post('save', function (doc, next) {
   doc.password = '';
   next();
 });
 
-UserSchema.statics.isUserExists = async function (email: string) {
-  return await User.findOne({ email }).select('+password');
-};
+userSchema.set('toJSON', {
+  transform: (_doc, ret) => {
+    delete ret.password;
+    return ret;
+  },
+});
 
-UserSchema.statics.isPasswordMatched = async function (
+userSchema.statics.isPasswordMatched = async function (
   plainTextPassword,
   hashedPassword,
 ) {
   return await bcrypt.compare(plainTextPassword, hashedPassword);
 };
 
-export const User = model<TUser, UserModel>('User', UserSchema);
+userSchema.statics.isUserExistsByEmail = async function (email: string) {
+  return await User.findOne({ email }).select('+password');
+};
+
+userSchema.statics.checkUserExist = async function (userId: string) {
+  const existingUser = await this.findById(userId);
+
+  if (!existingUser) {
+    throw new AppError(StatusCodes.NOT_ACCEPTABLE, 'User does not exist!');
+  }
+
+  if (!existingUser.isActive) {
+    throw new AppError(StatusCodes.NOT_ACCEPTABLE, 'User is not active!');
+  }
+
+  return existingUser;
+};
+
+const User = mongoose.model<IUser, UserModel>('User', userSchema);
+export default User;

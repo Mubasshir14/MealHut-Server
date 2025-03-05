@@ -1,13 +1,23 @@
-export type TLoginUser = {
+import { UserRole } from '../User/user.interface';
+
+export interface IAuth {
   email: string;
   password: string;
-};
+  clientInfo: {
+    device: 'pc' | 'mobile';
+    browser: string;
+    ipAddress: string;
+    pcName?: string;
+    os?: string;
+    userAgent?: string;
+  };
+}
 
-export type TJwtPayload = {
+export interface IJwtPayload {
   userId: string;
   name: string;
   email: string;
-  hasShop: boolean;
-  role: 'customer' | 'mealProvider' | 'admin';
+  provider: boolean;
+  role: UserRole;
   isActive: boolean;
 }

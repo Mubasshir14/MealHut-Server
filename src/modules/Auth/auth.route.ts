@@ -1,52 +1,25 @@
 import express from 'express';
-import { AuthUserController } from './auth.controller';
-import { UserValidation } from '../User/user.validation';
-import validateRequest from '../../app/middlewares/validateRequest';
-import { USER_ROLE } from '../User/user.constant';
+import clientInfoParser from '../../app/middlewares/clientInfoParser';
+
+import { UserRole } from '../User/user.interface';
 import auth from '../../app/middlewares/auth';
+import { AuthController } from './auth.controller';
+
 
 const router = express.Router();
 
-router.post(
-  '/register',
-  validateRequest(UserValidation.userValidationSchema),
-  AuthUserController.userRegistration,
-);
+router.post('/login', clientInfoParser, AuthController.userLogin);
 
 router.post(
-  '/login',
-  validateRequest(UserValidation.loginUserValidationSchema),
-  AuthUserController.userLogin,
-);
-
-router.post('/logout', AuthUserController.userLogout);
-
-router.post(
-  '/change-password',
-  auth(USER_ROLE.admin, USER_ROLE.mealProvider, USER_ROLE.customer),
-  validateRequest(UserValidation.changePasswordValidationSchema),
-  AuthUserController.changePassword,
-);
-
-
-
-router.post(
-  '/reset-password',
-  validateRequest(UserValidation.forgetPasswordValidationSchema),
-  AuthUserController.resetPassword,
+   '/refresh-token',
+   AuthController.refreshToken
 );
 
 router.post(
-  '/refresh-token',
-  AuthUserController.refreshToken,
+   '/change-password',
+   auth(UserRole.ADMIN, UserRole.CUSTOMER, UserRole.MEALPROVIDER),
+   AuthController.changePassword
 );
 
-router.get(
-  '/me',
-  auth(USER_ROLE.admin, USER_ROLE.mealProvider, USER_ROLE.customer),
-  AuthUserController.getMe,
-);
-
-router.get('/user', auth(USER_ROLE.admin), AuthUserController.getUser);
 
 export const AuthRoutes = router;

@@ -1,16 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose from 'mongoose';
 import { IMealProvider } from './mealProvider.interface';
-import { User } from '../User/user.model';
 import AppError from '../../app/errors/AppError';
 import httpStatus from 'http-status';
 import { MealProvider } from './mealProvider.model';
-import { TUser } from '../User/user.interface';
+import { IJwtPayload } from '../Auth/auth.interface';
+import User from '../User/user.model';
+import { UserRole } from '../User/user.interface';
 
 const createMealProvider = async (
   mealProviderdata: Partial<IMealProvider>,
   logo: any,
-  authUser: TUser,
+  authUser: IJwtPayload,
 ) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -39,11 +40,10 @@ const createMealProvider = async (
 
     await User.findByIdAndUpdate(
       existingUser._id,
-      { hasShop: true },
+      { provider: true, role: UserRole.MEALPROVIDER },
       { new: true, session },
     );
 
-    // Commit the transaction
     await session.commitTransaction();
     session.endSession();
 
@@ -55,19 +55,31 @@ const createMealProvider = async (
   }
 };
 
-const getMealProvider = async (authUser: TUser) => {
-  const existingUser = await User.isUserExists(authUser.userId);
-  if (!existingUser.hasShop) {
-    throw new AppError(httpStatus.NOT_FOUND, 'You have no shop!');
+const getMealProvider = async (authUser: IJwtPayload) => {
+  const existingUser = await User.checkUserExist(authUser.userId);
+  if (!existingUser.provider) {
+    throw new AppError(httpStatus.NOT_FOUND, 'You are not meal provider!');
   }
 
   const mealProvider = await MealProvider.findOne({
     user: existingUser._id,
-  }).populate('user');
+  });
+  return mealProvider;
+};
+
+const getAllMealProvider = async () => {
+  const mealProvider = await MealProvider.find();
+  return mealProvider;
+};
+
+const getSingleMealProvider = async (mealProvidersId: string) => {
+  const mealProvider = await MealProvider.findById(mealProvidersId);
   return mealProvider;
 };
 
 export const MealProviderServise = {
   createMealProvider,
-  getMealProvider
+  getMealProvider,
+  getAllMealProvider,
+  getSingleMealProvider,
 };

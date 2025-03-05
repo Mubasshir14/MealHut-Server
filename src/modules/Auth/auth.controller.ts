@@ -1,138 +1,86 @@
-
 import { RequestHandler } from 'express';
 import catchAsync from '../../app/utils/catchAsync';
 import sendResponse from '../../app/utils/sendResponse';
-import { AuthUserService } from './auth.service';
-import httpStatus from 'http-status';
 import config from '../../app/config';
-import AppError from '../../app/errors/AppError';
-
-const userRegistration: RequestHandler = catchAsync(async (req, res) => {
-  const result = await AuthUserService.userRegistrationIntoDB(req.body);
-
-  sendResponse(res, {
-    success: true,
-    message: 'User registered successfully',
-    statusCode: 201,
-    data: result,
-  });
-});
+import { StatusCodes } from 'http-status-codes';
+import { AuthService } from './auth.service';
 
 const userLogin: RequestHandler = catchAsync(async (req, res) => {
-  const result = await AuthUserService.userLoginIntoDB(req.body);
+  const result = await AuthService.loginUser(req.body);
   const { refreshToken, accessToken } = result;
 
   res.cookie('refreshToken', refreshToken, {
     secure: config.NODE_ENV === 'production',
     httpOnly: true,
-
     sameSite: 'none',
     maxAge: 1000 * 60 * 60 * 24 * 365,
   });
+
   sendResponse(res, {
-    statusCode: httpStatus.OK,
+    statusCode: StatusCodes.OK,
     success: true,
-    message: 'Logged in successfully.',
-    data: accessToken,
+    message: 'User logged in successfully!',
+    data: {
+      accessToken,
+      refreshToken,
+    },
   });
 });
 
-const userLogout: RequestHandler = catchAsync(async (req, res) => {
-  const token = req.headers.authorization?.split(' ')[1];
 
-  if (!token) {
-    sendResponse(res, {
-      success: false,
-      message: 'No token provided',
-      statusCode: 400,
-      data: '',
-    });
-    return;
-  }
 
-  await AuthUserService.userLogoutFromDB(token);
-  res.clearCookie('token', { httpOnly: true, secure: true });
+const changePassword: RequestHandler = catchAsync(async (req, res) => {
+  const user = req.user;
+  const payload = req.body;
+
+  await AuthService.changePassword(user, payload);
+
   sendResponse(res, {
+    statusCode: StatusCodes.OK,
     success: true,
-    message: 'Logout successful',
+    message: 'Password changed successfully!',
+    data: null,
+  });
+});
+
+const refreshToken: RequestHandler = catchAsync(async (req, res) => {
+  const { authorization } = req.headers;
+
+  const result = await AuthService.refreshToken(authorization as string);
+
+  sendResponse(res, {
     statusCode: 200,
-    data: '',
-  });
-});
-
-const changePassword = catchAsync(async (req, res) => {
-  const { ...passwordData } = req.body;
-
-  const result = await AuthUserService.changePassword(req.user, passwordData);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
     success: true,
-    message: 'Password is updated succesfully!',
+    message: 'User logged in successfully!',
     data: result,
   });
 });
 
-const refreshToken = catchAsync(async (req, res) => {
-  const refreshToken = req.cookies.refreshToken;
-  console.log(refreshToken);
-  const result = await AuthUserService.refreshToken(refreshToken);
+// const getMe = catchAsync(async (req, res) => {
+//   const { email, role } = req.user;
+//   const result = await AuthUserService.getMe(email, role);
 
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Access token is retrieved succesfully!',
-    data: result,
-  });
-});
+//   sendResponse(res, {
+//     statusCode: httpStatus.OK,
+//     success: true,
+//     message: 'User is retrieved succesfully',
+//     data: result,
+//   });
+// });
 
+// const getUser = catchAsync(async (req, res) => {
+//   const result = await AuthUserService.getUserFromDB();
 
-const resetPassword = catchAsync(async (req, res) => {
-  const token = req.headers.authorization?.split(' ')[1];
+//   sendResponse(res, {
+//     statusCode: httpStatus.OK,
+//     success: true,
+//     message: 'User is retrieved succesfully',
+//     data: result,
+//   });
+// });
 
-  if (!token) {
-    throw new AppError(httpStatus.BAD_REQUEST, 'Something went wrong !');
-  }
-
-  const result = await AuthUserService.resetPassword(req.body, token);
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'Password reset succesfully!',
-    data: result,
-  });
-});
-
-const getMe = catchAsync(async (req, res) => {
-  const { email, role } = req.user;
-  const result = await AuthUserService.getMe(email, role);
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'User is retrieved succesfully',
-    data: result,
-  });
-});
-
-const getUser = catchAsync(async (req, res) => {
-  const result = await AuthUserService.getUserFromDB();
-
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: 'User is retrieved succesfully',
-    data: result,
-  });
-});
-
-export const AuthUserController = {
-  userRegistration,
+export const AuthController = {
   userLogin,
-  userLogout,
   changePassword,
-  resetPassword,
   refreshToken,
-  getMe,
-  getUser,
 };

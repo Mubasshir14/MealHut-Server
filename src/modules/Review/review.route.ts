@@ -1,11 +1,12 @@
 import express from 'express';
 import auth from '../../app/middlewares/auth';
-import { USER_ROLE } from '../User/user.constant';
 import { ReviewController } from './review.controller';
+import { UserRole } from '../User/user.interface';
 const router = express.Router();
 
-router.post('/', auth(USER_ROLE.customer), ReviewController.createReview);
+router.post('/', auth(UserRole.CUSTOMER), ReviewController.createReview);
 router.get('/', ReviewController.getReview);
+router.get('/food', ReviewController.getProductReview);
 router.get('/:id', ReviewController.getProductReview);
 
 export const ReviewRoutes = router;

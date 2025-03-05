@@ -7,6 +7,14 @@ const mealProviderSchema = new Schema<IMealProvider>(
       type: String,
       required: true,
     },
+    address: {
+      type: String,
+      required: true,
+    },
+    servicesOffered: {
+      type: String,
+      required: true,
+    },
     contactNumber: {
       type: String,
       required: true,

@@ -1,32 +1,37 @@
 import { Router } from 'express';
 import { AuthRoutes } from '../../modules/Auth/auth.route';
-import { CarRoutes } from '../../modules/Car/car.route';
+import { UserRoutes } from '../../modules/User/user.route';
+import { MealProviderRoute } from '../../modules/MealProvider/mealProvider.route';
+import { MealRoutes } from '../../modules/Meal/meal.route';
+import { ReviewRoutes } from '../../modules/Review/review.route';
 import { OrderRoutes } from '../../modules/Order/order.route';
-import { CartRoutes } from '../../modules/Cart/cart.route';
-import { ReviewRoutes } from '../../modules/Review/review.routes';
 
 const router = Router();
 
 const moduleRoutes = [
   {
+    path: '/user',
+    route: UserRoutes,
+  },
+  {
     path: '/auth',
     route: AuthRoutes,
   },
   {
-    path: '/car',
-    route: CarRoutes,
+    path: '/meal-provider',
+    route: MealProviderRoute,
   },
   {
-    path: '/order',
-    route: OrderRoutes,
-  },
-  {
-    path: '/cart',
-    route: CartRoutes,
+    path: '/meal',
+    route: MealRoutes,
   },
   {
     path: '/review',
     route: ReviewRoutes,
+  },
+  {
+    path: '/order',
+    route: OrderRoutes,
   },
 ];
 

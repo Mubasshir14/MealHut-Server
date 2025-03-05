@@ -1,11 +1,18 @@
 import nodemailer from 'nodemailer';
-import config from '../config';
+import dotenv from 'dotenv';
 
-export const sendEmail = async (to: string, html: string) => {
+dotenv.config(); 
+
+export const sendEmail = async (
+  to: string,
+  html: string,
+  subject: string,
+  comment: string
+) => {
   const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com.',
+    host: 'smtp.gmail.com', 
     port: 587,
-    secure: config.NODE_ENV === 'production',
+    secure: false, 
     auth: {
       user: 'smmubasshiralkasshaf15@gmail.com',
       pass: 'ceuv qvlu wweh cdmf',
@@ -13,10 +20,10 @@ export const sendEmail = async (to: string, html: string) => {
   });
 
   await transporter.sendMail({
-    from: 'smmubasshiralkasshaf15@gmail.com',
+    from: `"MealHut" <${process.env.EMAIL_USER}>`,
     to,
-    subject: 'Your Order has been received!',
-    text: '',
-    html,
+    subject, 
+    text: comment, 
+    html, 
   });
 };

@@ -1,12 +1,8 @@
 import { Schema } from "mongoose";
 
 export type TReview = {
-    reviewText: string;
-    email?: string;
-    name: string;
-    model: string;
-    image: string;
+    userName?: string;
+    comment: string;
     rating: number;
-    //* not include
-    meal: Schema.Types.ObjectId;
+    mealId: Schema.Types.ObjectId;
 }

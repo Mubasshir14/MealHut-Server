@@ -1,111 +1,40 @@
 /* eslint-disable no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import httpStatus from 'http-status';
-import AppError from '../../app/errors/AppError';
-import { TUser } from '../User/user.interface';
-import { User } from '../User/user.model';
-import { TLoginUser } from './auth.interface';
-import { createToken, verifyToken } from './auth.utils';
-import config from '../../app/config';
+import mongoose from "mongoose";
+import { IAuth, IJwtPayload } from "./auth.interface";
+import User from "../User/user.model";
 import bcrypt from 'bcrypt';
-import jwt, { JwtPayload } from 'jsonwebtoken';
+import AppError from "../../app/errors/AppError";
+import { StatusCodes } from "http-status-codes";
+import config from "../../app/config";
+import { createToken, verifyToken } from "./auth.utils";
+import { JwtPayload, Secret } from "jsonwebtoken";
 
+const loginUser = async (payload: IAuth) => {
+  const session = await mongoose.startSession();
 
-const userRegistrationIntoDB = async (payload: TUser) => {
-  if (await User.isUserExists(payload.email)) {
-    throw new AppError(httpStatus.CONFLICT, 'User already exists');
-  }
-  const result = await User.create(payload);
-  return result;
-};
-
-const userLoginIntoDB = async (payload: TLoginUser) => {
-  const user = await User.isUserExists(payload.email);
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
-  }
-
-  const isPasswordMatched = await User.isPasswordMatched(
-    payload.password,
-    user.password,
-  );
-
-  if (!isPasswordMatched) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid password!');
-  }
-
-  const jwtPayload = {
-    email: user?.email,
-    role: user?.role,
-  };
-
-  const accessToken = createToken(
-    jwtPayload,
-    config.jwt_access_secret as string,
-    config.jwt_access_expires_in as string,
-  );
-
-  const refreshToken = createToken(
-    jwtPayload,
-    config.jwt_refresh_secret as string,
-    config.jwt_refresh_expires_in as string,
-  );
-
-  return {
-    accessToken,
-    refreshToken,
-  };
-};
-
-const userLogoutFromDB = async (token: string) => {
-  return true;
-};
-
-const changePassword = async (
-  userData: JwtPayload,
-  payload: { oldPassword: string; newPassword: string },
-) => {
-  const user = await User.isUserExists(userData.email);
-  console.log(user);
-
-  if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found !');
-  }
-
-  if (!(await User.isPasswordMatched(payload.oldPassword, user?.password)))
-    throw new AppError(httpStatus.FORBIDDEN, 'Password do not matched');
-
-  //hash new password
-  const newHashedPassword = await bcrypt.hash(
-    payload.newPassword,
-    Number(config.bcrypt_salt_rounds),
-  );
-
-  await User.findOneAndUpdate(
-    {
-      email: userData.email,
-      role: userData.role,
-    },
-    {
-      password: newHashedPassword,
-    },
-  );
-
-  return null;
-};
-
-const refreshToken = async (token: string) => {
   try {
-    const decoded = verifyToken(token, config.jwt_refresh_secret as string);
-    console.log('Decoded Token:', decoded); // Add this to check if decoding works
-    const { email, role, iat } = decoded;
-    const user = await User.isUserExists(email);
+    session.startTransaction();
+
+    const user = await User.findOne({ email: payload.email }).session(session);
     if (!user) {
-      throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
+      throw new AppError(StatusCodes.NOT_FOUND, 'This user is not found!');
     }
 
-    const jwtPayload = {
-      email: user.email,
+    if (!user.isActive) {
+      throw new AppError(StatusCodes.FORBIDDEN, 'This user is not active!');
+    }
+
+    if (!(await User.isPasswordMatched(payload?.password, user?.password))) {
+      throw new AppError(StatusCodes.FORBIDDEN, 'Password does not match');
+    }
+
+    const jwtPayload: IJwtPayload = {
+      userId: user._id as string,
+      name: user.name as string,
+      email: user.email as string,
+      provider: user.provider,
+      isActive: user.isActive,
       role: user.role,
     };
 
@@ -115,80 +44,112 @@ const refreshToken = async (token: string) => {
       config.jwt_access_expires_in as string,
     );
 
-    console.log('Access Token:', accessToken); // This will now be logged
+    const refreshToken = createToken(
+      jwtPayload,
+      config.jwt_refresh_secret as string,
+      config.jwt_refresh_expires_in as string,
+    );
+
+    const updateUserInfo = await User.findByIdAndUpdate(
+      user._id,
+      { clientInfo: payload.clientInfo, lastLogin: Date.now() },
+      { new: true, session },
+    );
+
+    await session.commitTransaction();
+
     return {
       accessToken,
+      refreshToken,
     };
   } catch (error) {
-    console.error('Error in refreshToken:', error);
+    await session.abortTransaction();
     throw error;
+  } finally {
+    session.endSession();
   }
 };
 
 
-const resetPassword = async (
-  payload: { email: string; newPassword: string },
-  token: string,
+const refreshToken = async (token: string) => {
+
+  let verifiedToken = null;
+  try {
+     verifiedToken = verifyToken(
+        token,
+        config.jwt_refresh_secret as Secret
+     );
+  } catch (err) {
+     throw new AppError(StatusCodes.FORBIDDEN, 'Invalid Refresh Token');
+  }
+
+  const { userId } = verifiedToken;
+
+  const isUserExist = await User.findById(userId);
+  if (!isUserExist) {
+     throw new AppError(StatusCodes.NOT_FOUND, 'User does not exist');
+  }
+
+  if (!isUserExist.isActive) {
+     throw new AppError(StatusCodes.BAD_REQUEST, 'User is not active');
+  }
+
+
+  const jwtPayload: IJwtPayload = {
+     userId: isUserExist._id as string,
+     name: isUserExist.name as string,
+     email: isUserExist.email as string,
+     provider: isUserExist.provider,
+     isActive: isUserExist.isActive,
+     role: isUserExist.role,
+  };
+
+  const newAccessToken = createToken(
+     jwtPayload,
+     config.jwt_access_secret as Secret,
+     config.jwt_access_expires_in as string
+  );
+
+  return {
+     accessToken: newAccessToken,
+  };
+};
+
+const changePassword = async (
+  userData: JwtPayload,
+  payload: { oldPassword: string; newPassword: string }
 ) => {
-  const user = await User.isUserExists(payload?.email);
+  const { userId } = userData;
+  const { oldPassword, newPassword } = payload;
 
+  const user = await User.findOne({ _id: userId });
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found !');
+     throw new AppError(StatusCodes.NOT_FOUND, 'User not found');
   }
-  const decoded = jwt.verify(
-    token,
-    config.jwt_access_secret as string,
-  ) as JwtPayload;
-
-  if (payload.email !== decoded.email) {
-    throw new AppError(httpStatus.FORBIDDEN, 'You are forbidden!');
+  if (!user.isActive) {
+     throw new AppError(StatusCodes.FORBIDDEN, 'User account is inactive');
   }
 
-  const newHashedPassword = await bcrypt.hash(
-    payload.newPassword,
-    Number(config.bcrypt_salt_rounds),
+
+  const isOldPasswordCorrect = await User.isPasswordMatched(
+     oldPassword,
+     user.password
   );
+  if (!isOldPasswordCorrect) {
+     throw new AppError(StatusCodes.FORBIDDEN, 'Incorrect old password');
+  }
 
-  await User.findOneAndUpdate(
-    {
-      email: decoded.email,
-      role: decoded.role,
-    },
-    {
-      password: newHashedPassword,
-    },
+  const hashedPassword = await bcrypt.hash(
+     newPassword,
+     Number(config.bcrypt_salt_rounds)
   );
+  await User.updateOne({ _id: userId }, { password: hashedPassword });
+
+  return { message: 'Password changed successfully' };
 };
 
-const getMe = async (email: string, role: string) => {
-  let result = null;
-  if (role === 'admin') {
-    result = await User.findOne({ email: email });
-  }
-
-  if (role === 'customer') {
-    result = await User.findOne({ email: email });
-  }
-
-  if (role === 'mealProvider') {
-    result = await User.findOne({ email: email });
-  }
-
-  return result;
-};
-
-const getUserFromDB = async () => {
-  const result = await User.find();
-  return result;
-};
-
-export const AuthUserService = {
-  userRegistrationIntoDB,
-  userLoginIntoDB,
-  userLogoutFromDB,
-  changePassword,
-  resetPassword,
+export const AuthService = {
+  loginUser,
   refreshToken,
-  getMe,
-  getUserFromDB,
+  changePassword,
 };

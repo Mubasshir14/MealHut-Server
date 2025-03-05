@@ -1,47 +1,67 @@
-/* eslint-disable no-unused-vars */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextFunction, Request, Response } from 'express';
-import catchAsync from '../utils/catchAsync';
-import AppError from '../errors/AppError';
-import httpStatus from 'http-status';
-import { JwtPayload } from 'jsonwebtoken';
+import jwt, { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import config from '../config';
-import { TUserRole } from '../../modules/User/user.interface';
-import { verifyToken } from '../../modules/Auth/auth.utils';
-import { User } from '../../modules/User/user.model';
 
-const auth = (...requiredRoles: TUserRole[]) => {
-  return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    const token = req.headers.authorization?.split(' ')[1];
+import catchAsync from '../utils/catchAsync';
+import { StatusCodes } from 'http-status-codes';
+import { UserRole } from '../../modules/User/user.interface';
+import AppError from '../errors/AppError';
+import User from '../../modules/User/user.model';
 
-    // checking if the token is missing
-    if (!token) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
-    }
 
-    // checking if the given token is valid
-    const decoded = verifyToken(
-      token,
-      config.jwt_access_secret as string,
-    ) as JwtPayload;
+const auth = (...requiredRoles: UserRole[]) => {
+   return catchAsync(
+      async (req: Request, res: Response, next: NextFunction) => {
+         const token = req.headers.authorization;
 
-    const { role, email, iat } = decoded;
+         if (!token) {
+            throw new AppError(
+               StatusCodes.UNAUTHORIZED,
+               'You are not authorized!'
+            );
+         }
 
-    // checking if the user is exist
-    const user = await User.isUserExists(email);
-    console.log(user);
+         try {
+            const decoded = jwt.verify(
+               token,
+               config.jwt_access_secret as string
+            ) as JwtPayload;
 
-    if (!user) {
-      throw new AppError(httpStatus.NOT_FOUND, 'User not found!');
-    }
+            const { role, email } = decoded;
 
-    if (requiredRoles && !requiredRoles.includes(role)) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized');
-    }
+            const user = await User.findOne({ email, role, isActive: true });
 
-    req.user = decoded as JwtPayload;
-    next();
-  });
+            if (!user) {
+               throw new AppError(
+                  StatusCodes.NOT_FOUND,
+                  'This user is not found!'
+               );
+            }
+
+            if (requiredRoles && !requiredRoles.includes(role)) {
+               throw new AppError(
+                  StatusCodes.UNAUTHORIZED,
+                  'You are not authorized!'
+               );
+            }
+
+            req.user = decoded as JwtPayload & { role: string };
+            next();
+         } catch (error) {
+            if (error instanceof TokenExpiredError) {
+               return next(
+                  new AppError(
+                     StatusCodes.UNAUTHORIZED,
+                     'Token has expired! Please login again.'
+                  )
+               );
+            }
+            return next(
+               new AppError(StatusCodes.UNAUTHORIZED, 'Invalid token!')
+            );
+         }
+      }
+   );
 };
 
 export default auth;

@@ -1,29 +1,36 @@
-import { NextFunction, Request, Response, Router } from 'express';
+import { Router } from 'express';
+import { UserRole } from '../User/user.interface';
+import auth from '../../app/middlewares/auth';
+import { multerUpload } from '../../app/utils/multer.config';
+import { parseBody } from '../../app/middlewares/bodyParse';
 import validateRequest from '../../app/middlewares/validateRequest';
 import { MealProviderValidation } from './mealProvider.validation';
 import { mealProviderController } from './mealProvider.controller';
-import auth from '../../app/middlewares/auth';
-import { USER_ROLE } from '../User/user.constant';
-import { upload } from '../../app/utils/sendImageToImageCloudinary';
 
 const router = Router();
 
 router.post(
   '/',
-  auth(USER_ROLE.customer),
-  upload.single('logo'),
-  (req: Request, res: Response, next: NextFunction) => {
-    req.body = JSON.parse(req.body.data);
-    next();
-  },
+  auth(UserRole.CUSTOMER),
+  multerUpload.single('logo'),
+  parseBody,
   validateRequest(MealProviderValidation.createmealProviderValidation),
   mealProviderController.createMealProvider,
 );
 
 router.get(
   '/',
-  auth(USER_ROLE.customer, USER_ROLE.admin),
+  auth(UserRole.ADMIN, UserRole.CUSTOMER, UserRole.MEALPROVIDER),
   mealProviderController.getMealProvider,
+);
+
+router.get(
+  '/mealProvider',
+  mealProviderController.getAllMealProvider,
+);
+router.get(
+  '/:mealProvidersId',
+  mealProviderController.getSingleMealProvider,
 );
 
 export const MealProviderRoute = router;

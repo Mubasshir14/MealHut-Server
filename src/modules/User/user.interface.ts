@@ -1,32 +1,40 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-unused-vars */
-import { Model } from 'mongoose';
-import { USER_ROLE } from './user.constant';
+import { Document, Model } from 'mongoose';
 
-export interface TUser extends Document {
-  [x: string]: any;
+export enum UserRole {
+  ADMIN = 'admin',
+  CUSTOMER = 'customer',
+  MEALPROVIDER = 'mealProvider',
+}
+
+export interface IUser extends Document {
+  email: string;
+  password: string;
   name: string;
-  email: string;
-  password: string;
-  role: 'customer' | 'mealProvider' | 'admin';
-  mealProvider: boolean;
-  phone?: string;
-  address?: string;
+  role: UserRole;
+  provider: boolean;
+  phone: string;
+  address: string;
+  clientInfo: {
+    device: 'pc' | 'mobile';
+    browser: string;
+    ipAddress: string;
+    pcName?: string;
+    os?: string;
+    userAgent?: string;
+  };
+  lastLogin: Date;
+  isActive: boolean;
+  otpToken?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface TLoginUser {
-  email: string;
-  password: string;
-}
-
-export interface UserModel extends Model<TUser> {
-  //instance methods for checking if the user exist
-  isUserExists(email: string): Promise<TUser>;
-  //instance methods for checking if passwords are matched
+export interface UserModel extends Model<IUser> {
   isPasswordMatched(
     plainTextPassword: string,
     hashedPassword: string,
   ): Promise<boolean>;
+  isUserExistsByEmail(id: string): Promise<IUser>;
+  checkUserExist(userId: string): Promise<IUser>;
 }
-
-export type TUserRole = keyof typeof USER_ROLE;

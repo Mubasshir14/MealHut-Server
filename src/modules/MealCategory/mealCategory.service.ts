@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TUser } from '../User/user.interface';
+import { IJwtPayload } from '../Auth/auth.interface';
 import { TMealCategory } from './mealCategory.interface';
 import { MealCategory } from './mealCategory.model';
 
 const createCategory = async (
   categoryData: Partial<TMealCategory>,
   icon: any,
-  authUser: TUser,
+  authUser: IJwtPayload,
 ) => {
   const category = new MealCategory({
     ...categoryData,

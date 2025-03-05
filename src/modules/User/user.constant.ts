@@ -3,3 +3,9 @@ export const USER_ROLE = {
   admin: 'admin',
   mealProvider: 'mealProvider',
 } as const;
+
+export const UserSearchableFields = [
+  'email',
+  'name',
+  'role'
+];

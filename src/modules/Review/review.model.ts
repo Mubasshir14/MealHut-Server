@@ -3,28 +3,19 @@ import { TReview } from './review.interface';
 
 const ReviewSchema = new Schema<TReview>(
   {
-    reviewText: {
-        type: String,
-        required: true,
-      },
-      name: {
-        type: String,
-        required: true,
-      },
-      email: {
-        type: String,
-      },
-      model: {
-        type: String,
-      },
-      image: {
-        type: String,
-      },
-      rating: {
-        type: Number,
-        required: true,
-      },
-    meal: {
+    userName: {
+      type: String,
+      required: true,
+    },
+    comment: {
+      type: String,
+      required: true,
+    },
+    rating: {
+      type: Number,
+      required: true,
+    },
+    mealId: {
       type: Schema.Types.ObjectId,
       ref: 'Meal',
       required: true,
