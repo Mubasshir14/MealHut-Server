@@ -8,12 +8,12 @@ const router = Router();
 router.post('/', auth(UserRole.CUSTOMER), OrderController.createOrder);
 router.get(
   '/',
-  auth(UserRole.CUSTOMER, UserRole.CUSTOMER),
+  auth(UserRole.CUSTOMER, UserRole.MEALPROVIDER),
   OrderController.getOrders,
 );
 router.patch(
   '/:id',
-  auth(UserRole.CUSTOMER, UserRole.CUSTOMER),
+  auth(UserRole.CUSTOMER, UserRole.MEALPROVIDER),
   OrderController.updateOrder,
 );
 
